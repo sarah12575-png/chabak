@@ -2,11 +2,16 @@ export default async function handler(req, res) {
   const { pageNo = 1, numOfRows = 10 } = req.query;
   const SERVICE_KEY = process.env.CAMP_API_KEY;
 
-  const baseUrl = 'http://apis.data.go.kr/1741000/auto_campgrounds/history';
-  const url = `${baseUrl}?serviceKey=${SERVICE_KEY}&pageNo=${pageNo}&numOfRows=${numOfRows}&type=json`;
+  const baseUrl = 'https://apis.data.go.kr/1741000/auto_campgrounds/history';
+  const url = `${baseUrl}?serviceKey=${SERVICE_KEY}&pageNo=${pageNo}&numOfRows=${numOfRows}&_type=json`;
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
     
     if (!response.ok) {
       throw new Error(`API response status: ${response.status}`);
@@ -15,7 +20,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     res.status(200).json(data);
   } catch (error) {
-    console.error('Error fetching campground history:', error);
+    console.error('Error:', error);
     res.status(500).json({ error: 'Failed to fetch campground history data' });
   }
 }
