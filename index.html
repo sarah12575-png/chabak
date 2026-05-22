@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전국 자동차 야영장(캠핑장) 가이드</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f5f7fa; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { color: #2c3e50; margin-bottom: 5px; }
+        .btn-box { text-align: center; margin-bottom: 20px; }
+        button { background-color: #1abc9c; color: white; border: none; padding: 12px 24px; font-size: 16px; cursor: pointer; border-radius: 25px; transition: background 0.3s; }
+        button:hover { background-color: #16a085; }
+        .loading { text-align: center; color: #7f8c8d; font-style: italic; display: none; }
+        .camp-list { display: grid; gap: 15px; }
+        .camp-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #34495e; }
+        .camp-title { font-size: 18px; font-weight: bold; color: #2c3e50; margin-bottom: 8px; }
+        .camp-info { font-size: 14px; color: #555; line-height: 1.6; }
+        .badge { display: inline-block; padding: 3px 8px; font-size: 12px; border-radius: 3px; font-weight: bold; margin-bottom: 5px; }
+        .badge-open { background-color: #2ecc71; color: white; }
+        .badge-close { background-color: #e74c3c; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 전국 자동차야영장 정보 조회</h1>
+            <p>행정안전부 공공데이터 기반 전국 오토캠핑장 현황</p>
+        </header>
+
+        <div class="btn-box">
+            <button onclick="loadCampgrounds()">야영장 목록 불러오기</button>
+        </div>
+
+        <div id="loading" class="loading">⛺ 야영장 정보를 안전하게 가져오는 중입니다...</div>
+        <div id="campList" class="camp-list"></div>
+    </div>
+
+    <script>
+        async function loadCampgrounds() {
+            const loadingDiv = document.getElementById('loading');
+            const campListDiv = document.getElementById('campList');
+            
+            loadingDiv.style.display = 'block';
+            campListDiv.innerHTML = '';
+
+            try {
+                // 내 서버리스 함수 호출 (CORS 우회)
+                // 필요에 따라 pageNo, numOfRows 파라미터를 추가할 수 있습니다. (예: /api/info?pageNo=1&numOfRows=20)
+                const response = await fetch('/api/info?pageNo=1&numOfRows=20');
+                const data = await response.json();
+                
+                loadingDiv.style.display = 'none';
+
+                // 공공데이터포털 표준 API 구조에 맞춰 결과 추출
+                // 행안부 표준 API 구조는 대개 response.body.items 또는 response.fields 구조를 가집니다.
+                // 아래 코드는 일반적인 표준데이터 JSON 형태를 기반으로 파싱하도록 유연하게 작성되었습니다.
+                const items = data.response?.body?.items || data.items || data;
+
+                if (!items || items.length === 0) {
+                    campListDiv.innerHTML = '<p style="text-align:center;">등록된 야영장 데이터가 없거나 점검 중입니다.</p>';
+                    return;
+                }
+
+                items.forEach(item => {
+                    // API 제공 필드명에 맞춤형 매핑 (행안부 표준명칭: bsnStateNm(영업상태), bzconNm(사업장명), rdnWhlAddr(소재지도로명주소) 등)
+                    const name = item.bzconNm || item.campNm || item.사업장명 || '이름 정보 없음';
+                    const addr = item.rdnWhlAddr || item.lnmWhlAddr || item.소재지도로명주소 || '주소 정보 없음';
+                    const state = item.bsnStateNm || item.영업상태명 || '영업상태 알수없음';
+                    const tel = item.telno || item.전화번호 || '전화번호 없음';
+                    const openDate = item.prmisnDt || item.인허가일자 || '-';
+
+                    const isOperating = state.includes('영업') || state.includes('정상');
+                    const badgeClass = isOperating ? 'badge-open' : 'badge-close';
+
+                    const cardHtml = `
+                        <div class="camp-card">
+                            <span class="badge ${badgeClass}">${state}</span>
+                            <div class="camp-title">${name}</div>
+                            <div class="camp-info">
+                                📍 <strong>주소:</strong> ${addr}<br>
+                                📞 <strong>연락처:</strong> ${tel}<br>
+                                📅 <strong>인허가일자:</strong> ${openDate}
+                            </div>
+                        </div>
+                    `;
+                    campListDiv.innerHTML += cardHtml;
+                });
+
+            } catch (error) {
+                console.error(error);
+                loadingDiv.style.display = 'none';
+                campListDiv.innerHTML = '<p style="text-align:center; color:red;">데이터를 불러오는 중 오류가 발생했습니다. Vercel 환경변수(CAMP_API_KEY) 설정을 확인해 주세요.</p>';
+            }
+        }
+    </script>
+</body>
+</html>
